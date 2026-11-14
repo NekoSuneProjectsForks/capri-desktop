@@ -1765,6 +1765,9 @@ namespace CapriDesktop
         // no beating in it ("who is adam smasher") is only chat.
         private static readonly Regex IconsRampage = new Regex(@"\b(?:adam\s+)?smashers?\s+(?:(?:would|could|will|can|is\s+(?:going\s+to|gonna))\s+)?(?:(?:totally|absolutely|easily|just|literally)\s+)?(?:(?:rock|wreck|beat|destroy|smash|crush|kill|fold|clap|stomp)(?:s|es)?\s+(?:you(?:r\s+(?:shit|ass))?|ur\s+(?:shit|ass)|u)\b|(?:would|could|will)\s+win\b)", RegexOptions.IgnoreCase);
 
+        // The clones' fake delete joke on demand. Nothing is deleted: the bar fills, then says "jk. your files are fine".
+        private static readonly Regex PrankSystem = new Regex(@"^(?:(?:go |now |pls |please )?(?:delete|deleting|wipe|nuke|remove) (?:my |your |the )?system ?32|fake delete(?: (?:my |your )?system ?32)?|(?:troll|prank) me|do the system ?32 (?:joke|prank|troll))[.!?]*$", RegexOptions.IgnoreCase);
+        private static readonly Regex PrankFiles = new Regex(@"^(?:(?:go |now |pls |please )?(?:delete|wipe|nuke) (?:all )?(?:my|of my) files|fake delete (?:all )?(?:my )?files|(?:troll|prank) me (?:by )?deleting (?:all )?(?:my )?files)[.!?]*$", RegexOptions.IgnoreCase);
         private static readonly Regex CloneEnough = new Regex(@"^(?:ok(?:ay)? )?(?:stop|enough|that'?s enough)$", RegexOptions.IgnoreCase);
         // Gaming Mode: on, off, or which way to move her HUD (up, down, left, right, reset). Her window sets it.
         internal static Func<string, string> GamingMode = delegate { return "Gaming Mode isn't on this PC yet."; };
@@ -2755,7 +2758,7 @@ namespace CapriDesktop
         // Whether what they said asks for this tool, in the words her hands take for it where she has it.
         private static bool Wanted(string tool, string text, string said)
         {
-            if (tool == "clone") return CloneOn.IsMatch(text) || CloneOff.IsMatch(text);
+            if (tool == "clone") return CloneOn.IsMatch(text) || CloneOff.IsMatch(text) || PrankSystem.IsMatch(text) || PrankFiles.IsMatch(text);
             if (tool == "gaming_mode") return GamingFor(text) != null;
             // "Clip that" is her default length, which ClipSeconds gives as -1.
             if (tool == "clip") return ClipSeconds(said) != 0;
@@ -3847,6 +3850,10 @@ namespace CapriDesktop
             if (napped.Success) { tool = "nap"; args.Action = napped.Groups["wake"].Success ? "wake" : "sleep"; return true; }
             if (HologramOff.IsMatch(text)) { tool = "hologram"; args.Action = "off"; return true; }
             if (HologramOn.IsMatch(text)) { tool = "hologram"; args.Action = "on"; return true; }
+#if !CROSS
+            if (PrankFiles.IsMatch(text)) { tool = "clone"; args.Action = "prank_files"; return true; }
+            if (PrankSystem.IsMatch(text)) { tool = "clone"; args.Action = "prank"; return true; }
+#endif
             Match cloning = CloneOn.Match(text);
             if (cloning.Success)
             {
@@ -4241,7 +4248,7 @@ namespace CapriDesktop
             if (tool == "call_say") return args != null && Named(args.Text);
 #endif
             if (tool == "draw") return Ink.Valid(args);
-            if (tool == "clone") return args != null && (args.Action == "spawn" || args.Action == "stop");
+            if (tool == "clone") return args != null && (args.Action == "spawn" || args.Action == "stop" || args.Action == "prank" || args.Action == "prank_files");
             if (tool == "hologram") return args != null && (args.Action == "on" || args.Action == "off");
 #if !CROSS
             if (tool == "desktop_icons") return args != null && (args.Action == "mess" || args.Action == "hide" || args.Action == "back" || args.Action == "rampage");

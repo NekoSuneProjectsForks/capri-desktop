@@ -33,6 +33,8 @@ namespace CapriDesktop
         internal bool Returning;
         internal string Agent;
         internal string Line;
+        // The fake bar this clone was sent to fetch, when one was asked for.
+        internal string Prank;
         internal Bitmap LineCard;
         internal CloneNote Carrying;
         internal CloneHaul Hauling;
@@ -81,6 +83,9 @@ namespace CapriDesktop
         internal readonly List<ClonePrint> Prints = new List<ClonePrint>();
         internal readonly List<CloneHaul> Hauls = new List<CloneHaul>();
         internal CloneBody Nabber;
+        // A fake progress bar asked for by name ("delete system32"): the next free clone fetches it straight away.
+        // Empty picks one of FakeLines.
+        internal string Prank;
         internal int Pending;
         internal bool Multiplying;
         internal bool Watching;
@@ -175,6 +180,19 @@ namespace CapriDesktop
                     note.Text = Said.In(Owned);
                     note.Stale = true;
                 }
+            if (Prank != null)
+            {
+                CloneBody prankster = Bodies.Find(delegate(CloneBody item) { return item != Nabber && item.Agent == null && !item.Returning && !item.Fetching && item.Carrying == null && item.Hauling == null; });
+                if (prankster != null)
+                {
+                    prankster.Fetching = true;
+                    prankster.Prank = Prank.Length > 0 ? Prank : FakeLines[random.Next(FakeLines.Length)];
+                    prankster.RestUntil = 0;
+                    Prank = null;
+                    noteAt = Math.Max(noteAt, now + 15);
+                    Edge(prankster);
+                }
+            }
             if (now >= noteAt && Bodies.Count > 0)
             {
                 noteAt = now + Between(22, 40);
@@ -224,8 +242,10 @@ namespace CapriDesktop
             if (body.Fetching)
             {
                 body.Fetching = false;
-                bool fake = random.Next(2) == 0;
-                body.Carrying = new CloneNote { X = body.X, Y = body.Y, Text = Said.In(fake ? FakeLines[random.Next(FakeLines.Length)] : NoteLines[random.Next(NoteLines.Length)]), BarFrom = fake ? now : -1, BarFor = fake ? Between(6, 12) : 0 };
+                bool fake = body.Prank != null || random.Next(2) == 0;
+                string line = body.Prank ?? (fake ? FakeLines[random.Next(FakeLines.Length)] : NoteLines[random.Next(NoteLines.Length)]);
+                body.Prank = null;
+                body.Carrying = new CloneNote { X = body.X, Y = body.Y, Text = Said.In(line), BarFrom = fake ? now : -1, BarFor = fake ? Between(6, 12) : 0 };
                 Notes.Add(body.Carrying);
                 Wander(body);
                 return;
@@ -981,6 +1001,15 @@ namespace CapriDesktop
         // A number makes exactly that many. No number makes one that keeps multiplying until they stop it.
         internal string Clone(string action, int count)
         {
+            if (action == "prank" || action == "prank_files")
+            {
+                // One clone pops in and drags in a fake delete bar that fills, then turns into "jk. your files are fine".
+                bool fresh = cloneWindow == null;
+                if (fresh) Clone("spawn", 1);
+                if (cloneWindow == null) return "Couldn't do that just now.";
+                cloneWindow.Swarm.Prank = action == "prank_files" ? "deleting all your files" : "deleting system32";
+                return fresh ? "Oh no. What's this button do? Hold Esc to stop me." : "Hehe. Hold Esc to stop us.";
+            }
             if (action == "stop")
             {
                 int gone = cloneWindow == null ? 0 : cloneWindow.Swarm.Bodies.Count + cloneWindow.Swarm.Pending;
