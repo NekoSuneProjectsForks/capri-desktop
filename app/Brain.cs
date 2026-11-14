@@ -1802,7 +1802,8 @@ namespace CapriDesktop
         internal static string[] ServerModels(string address, string key = null)
         {
             if (!string.IsNullOrEmpty(key) && !ServerKeySafe(address)) throw new BrainException("Use https for a provider elsewhere. A key over plain http isn't safe.", true);
-            HttpWebRequest request = Create(address + "/v1/models", 5000);
+            // Routers like OmniRoute build a big catalog on a cold start, so give the list longer than 5 s.
+            HttpWebRequest request = Create(address + "/v1/models", 30000);
             bool signed = !string.IsNullOrEmpty(key);
             if (signed) SignServer(request, key);
             try

@@ -10366,14 +10366,15 @@ namespace CapriDesktop
             {
                 if (listing != providerListing) return;
                 string[] found = null;
+                string why = null;
                 try { found = Brain.ServerModels(address, key); }
-                catch (Exception) { }
+                catch (Exception error) { why = error is BrainException ? error.Message : error.GetType().Name + ": " + error.Message; }
                 Post(delegate
                 {
                     if (listing != providerListing) return;
                     if (found == null || found.Length == 0)
                     {
-                        mainframe.ProviderProblem(found == null ? "Can't reach that provider. Check the address and key." : "Your server lists no models. Load one in it first.");
+                        mainframe.ProviderProblem(found == null ? (why ?? "Can't reach that provider. Check the address and key.") : "Your server lists no models. Load one in it first.");
                         return;
                     }
                     string pair;
